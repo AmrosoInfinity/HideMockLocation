@@ -24,7 +24,14 @@
   - `setExtras()`
   - `set()`
 - `android.provider.Settings`
-  - `Secure.getStringForUser(name="mock_location")`
+  - `Secure.getStringForUser()`
+- `android.app.AppOpsManager`
+  - `checkOp()`
+  - `checkOpNoThrow()`
+  - `unsafeCheckOp()`
+  - `unsafeCheckOpNoThrow()`
+- `com.android.providers.settings.SettingsProvider`
+  - `call()`
 
 ## How to set Mock Location app via ADB ([Stack Overflow](https://stackoverflow.com/questions/40414011/how-to-set-the-android-6-0-mock-location-app-from-adb/43747384#43747384))
 
