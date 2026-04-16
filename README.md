@@ -1,6 +1,6 @@
 # Hide Mock Location
 **Prevents detection of mock location**  
-**Supported Android 6~16**  
+**Supports Android 6–16**  
 **Test App**: **[MockLocationDetector](https://github.com/auag0/MockLocationDetector)**
 
 ## Compatibility Notes
@@ -11,7 +11,9 @@
 1. Download the APK from the [latest releases](https://github.com/auag0/HideMockLocation/releases/latest) and install it on your device.
 2. Enable the module in your Xposed manager.
 3. If you are using **LSPosed**, select the target apps from which you want to hide the mock location.
-4. To apply this to all apps, you can select the **System Framework** in the scope.
+4. To apply this to all apps, you can select the following in your scope (***Recommended***):
+   * **System Framework** (system)
+   * **Settings Storage** (com.android.providers.settings)
 5. Reboot your device (if required by your Xposed manager) and you're all set!
 
 ## Hooked Methods
