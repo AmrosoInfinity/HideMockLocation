@@ -10,12 +10,20 @@ import io.github.libxposed.api.XposedModuleInterface
 class Main : XposedModule() {
     override fun onPackageReady(param: XposedModuleInterface.PackageReadyParam) {
         hookLocationMethods(param.classLoader)
-        hookAppOpsMethods(param.classLoader)
 
-        if (param.packageName == "com.android.providers.settings") {
-            hookSettingsProviderMethods(param.classLoader)
-        } else if (param.packageName != "android") {
-            hookSettingsMethods(param.classLoader)
+        when (param.packageName) {
+            "android" -> {
+                hookAppOpsService(param.classLoader)
+            }
+
+            "com.android.providers.settings" -> {
+                hookSettingsProviderMethods(param.classLoader)
+            }
+
+            else -> {
+                hookSettingsMethods(param.classLoader)
+                hookAppOpsMethods(param.classLoader)
+            }
         }
     }
 
@@ -107,6 +115,31 @@ class Main : XposedModule() {
         for (methodName in checkMethods) {
             hookAllMethods(appOpsClass, methodName) { chain ->
                 if (isMockLocationOp(chain.args.firstOrNull())) {
+                    return@hookAllMethods AppOpsManager.MODE_ERRORED
+                }
+                chain.proceed()
+            }
+        }
+    }
+
+    // Please let me know if I'm wrong
+    // Android 10+ uses com.android.server.appop.AppOpsService#checkOperationImpl.
+    // Android 9 and below uses com.android.server.AppOpsService#checkOperation.
+    @SuppressLint("PrivateApi")
+    private fun hookAppOpsService(classLoader: ClassLoader) {
+        val appOpsClass = listOf(
+            "com.android.server.appop.AppOpsService",
+            "com.android.server.AppOpsService"
+        ).firstNotNullOfOrNull { className ->
+            runCatching {
+                classLoader.loadClass(className)
+            }.getOrNull()
+        } ?: return
+
+        val checkMethods = listOf("checkOperation", "checkOperationImpl")
+        for (methodName in checkMethods) {
+            hookAllMethods(appOpsClass, methodName) { chain ->
+                if (isMockLocationOp(chain.args.getOrNull(0))) {
                     return@hookAllMethods AppOpsManager.MODE_ERRORED
                 }
                 chain.proceed()
