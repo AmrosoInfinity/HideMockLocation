@@ -15,6 +15,9 @@ jobs:
         java-version: '21'
         distribution: 'temurin'
 
+    - name: Clean old keystore
+      run: rm -f app/release-keystore.jks release-keystore.jks.base64
+
     - name: Generate keystore
       run: |
         keytool -genkeypair -v \
@@ -39,9 +42,9 @@ jobs:
         path: release-keystore.jks.base64
 
     - name: Commit keystore to repo
-  run: |
-    git config --global user.name "github-actions[bot]"
-    git config --global user.email "github-actions[bot]@users.noreply.github.com"
-    git add app/release-keystore.jks
-    git commit -m "Add release keystore"
-    git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} HEAD:main
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git add app/release-keystore.jks
+        git commit -m "Add release keystore"
+        git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} HEAD:main
