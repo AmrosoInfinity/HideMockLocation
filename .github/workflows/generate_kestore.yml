@@ -19,11 +19,15 @@ jobs:
       run: |
         keytool -genkeypair -v \
           -keystore app/release-keystore.jks \
-          -alias myAlias \
-          -storepass amrosolsetia8 \
-          -keypass amrosolsetia8 \
+          -alias $KEYALIAS \
+          -storepass $STOREPASSWORD \
+          -keypass $KEYPASSWORD \
           -dname "CN=amrosolonline, OU=amrosolgithub, O=amrosolcommunity, L=jakarta, ST=jakarta, C=62" \
           -keyalg RSA -keysize 2048 -validity 10000
+      env:
+        STOREPASSWORD: ${{ secrets.STOREPASSWORD }}
+        KEYALIAS: ${{ secrets.KEYALIAS }}
+        KEYPASSWORD: ${{ secrets.KEYPASSWORD }}
 
     - name: Encode keystore to base64
       run: base64 app/release-keystore.jks > release-keystore.jks.base64
