@@ -1,12 +1,14 @@
-name: Generate Release Keystore
+name: Generate and Commit Keystore
 
 on:
   workflow_dispatch:
 
 jobs:
-  generate:
+  keystore:
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v4
+
     - name: Setup JDK
       uses: actions/setup-java@v4
       with:
@@ -16,18 +18,26 @@ jobs:
     - name: Generate keystore
       run: |
         keytool -genkeypair -v \
-          -keystore release-keystore.jks \
-          -alias myalias \
+          -keystore app/release-keystore.jks \
+          -alias myAlias \
           -storepass amrosolsetia8 \
           -keypass amrosolsetia8 \
           -dname "CN=amrosolonline, OU=amrosolgithub, O=amrosolcommunity, L=jakarta, ST=jakarta, C=62" \
           -keyalg RSA -keysize 2048 -validity 10000
 
     - name: Encode keystore to base64
-      run: base64 release-keystore.jks > release-keystore.jks.base64
+      run: base64 app/release-keystore.jks > release-keystore.jks.base64
 
     - name: Upload keystore base64
       uses: actions/upload-artifact@v4
       with:
         name: release-keystore.jks.base64
         path: release-keystore.jks.base64
+
+    - name: Commit keystore to repo
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git add app/release-keystore.jks
+        git commit -m "Add release keystore"
+        git push
