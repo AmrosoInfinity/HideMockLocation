@@ -46,5 +46,5 @@ jobs:
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
         git add app/release-keystore.jks
-        git commit -m "Add release keystore"
+        git commit -m "Add release keystore" || echo "No changes to commit"
         git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} HEAD:main
