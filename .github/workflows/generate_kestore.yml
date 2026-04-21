@@ -39,9 +39,9 @@ jobs:
         path: release-keystore.jks.base64
 
     - name: Commit keystore to repo
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git add app/release-keystore.jks
-        git commit -m "Add release keystore"
-        git push
+  run: |
+    git config --global user.name "github-actions[bot]"
+    git config --global user.email "github-actions[bot]@users.noreply.github.com"
+    git add app/release-keystore.jks
+    git commit -m "Add release keystore"
+    git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} HEAD:main
