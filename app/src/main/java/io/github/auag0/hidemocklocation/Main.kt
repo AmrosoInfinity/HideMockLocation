@@ -9,7 +9,7 @@ import io.github.libxposed.api.XposedModuleInterface
 
 class Main : XposedModule() {
     override fun onPackageReady(param: XposedModuleInterface.PackageReadyParam) {
-        stealthHookLocation(param.classLoader)
+        hookLocationMethods(param.classLoader)
 
         when (param.packageName) {
             "android" -> {
@@ -26,9 +26,20 @@ class Main : XposedModule() {
     }
 
     @SuppressLint("SoonBlockedPrivateApi", "BlockedPrivateApi")
-    private fun stealthHookLocation(classLoader: ClassLoader) {
+    private fun hookLocationMethods(classLoader: ClassLoader) {
         val locationClass = classLoader.loadClass("android.location.Location")
 
+        // Wajib hook: isMock() → selalu false
+        hookAllMethods(locationClass, "isMock") { _ -> false }
+
+        // Sinkronkan setter supaya konsisten
+        hookAllMethods(locationClass, "setMock") { chain ->
+            val args = chain.args.toTypedArray()
+            args[0] = false
+            chain.proceed(args)
+        }
+
+        // Patch internal field agar konsisten
         val hasMockProviderMaskField = runCatching {
             locationClass.getDeclaredField("HAS_MOCK_PROVIDER_MASK").apply { isAccessible = true }
         }.getOrNull()
@@ -39,7 +50,7 @@ class Main : XposedModule() {
             locationClass.getDeclaredField("mExtras").apply { isAccessible = true }
         }.getOrNull()
 
-        // Hook hanya "set" → patch internal setelah copy
+        // Hook "set" → setiap kali Location di-copy, bersihkan flag mock
         hookAllMethods(locationClass, "set") { chain ->
             chain.proceed()
 
