@@ -12,12 +12,8 @@ class Main : XposedModule() {
         hookLocationMethods(param.classLoader)
 
         when (param.packageName) {
-            "android" -> {
-                hookAppOpsService(param.classLoader)
-            }
-            "com.android.providers.settings" -> {
-                hookSettingsProviderMethods(param.classLoader)
-            }
+            "android" -> hookAppOpsService(param.classLoader)
+            "com.android.providers.settings" -> hookSettingsProviderMethods(param.classLoader)
             else -> {
                 hookSettingsMethods(param.classLoader)
                 hookAppOpsMethods(param.classLoader)
@@ -29,8 +25,11 @@ class Main : XposedModule() {
     private fun hookLocationMethods(classLoader: ClassLoader) {
         val locationClass = classLoader.loadClass("android.location.Location")
 
-        // Wajib hook: isMock() → selalu false
-        hookAllMethods(locationClass, "isMock") { _ -> false }
+        // Wajib hook: isMock() → return false, tapi tetap jalankan implementasi asli
+        hookAllMethods(locationClass, "isMock") { chain ->
+            chain.proceed() // jalankan method asli supaya state internal tetap valid
+            false           // override hasil jadi false
+        }
 
         // Sinkronkan setter supaya konsisten
         hookAllMethods(locationClass, "setMock") { chain ->
