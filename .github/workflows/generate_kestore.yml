@@ -47,7 +47,9 @@ jobs:
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        # ganti remote supaya pakai PAT
         git remote set-url origin https://x-access-token:$PAT_TOKEN@github.com/${{ github.repository }}
         git add app/release-keystore.jks
         git commit -m "Add release keystore" || echo "No changes to commit"
+        # sesuaikan branch: main atau master
         git push origin HEAD:main
