@@ -1,4 +1,4 @@
-name: Generate and Commit Keystore
+name: Generate Keystore Artifact
 
 on:
   workflow_dispatch:
@@ -35,25 +35,10 @@ jobs:
     - name: Encode keystore to base64
       run: base64 app/release-keystore.jks > release-keystore.jks.base64
 
-    - name: Upload keystore base64
+    - name: Upload keystore and base64
       uses: actions/upload-artifact@v4
       with:
-        name: release-keystore.jks.base64
-        path: release-keystore.jks.base64
-
-    - name: Commit keystore to repo
-      env:
-        PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-      run: |
-        # identitas commit bebas, tidak memengaruhi izin push
-        git config --global user.name "CI Runner"
-        git config --global user.email "ci-runner@example.com"
-
-        # ganti remote supaya pakai PAT
-        git remote set-url origin https://x-access-token:$PAT_TOKEN@github.com/${{ github.repository }}
-
-        git add app/release-keystore.jks
-        git commit -m "Add release keystore" || echo "No changes to commit"
-
-        # sesuaikan branch: main atau master
-        git push origin HEAD:main
+        name: release-keystore-files
+        path: |
+          app/release-keystore.jks
+          release-keystore.jks.base64
