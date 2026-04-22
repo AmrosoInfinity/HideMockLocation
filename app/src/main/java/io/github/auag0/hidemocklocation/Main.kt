@@ -12,8 +12,14 @@ class Main : XposedModule() {
         hookLocationMethods(param.classLoader)
 
         when (param.packageName) {
-            "android" -> hookAppOpsService(param.classLoader)
-            "com.android.providers.settings" -> hookSettingsProviderMethods(param.classLoader)
+            "android" -> {
+                hookAppOpsService(param.classLoader)
+            }
+
+            "com.android.providers.settings" -> {
+                hookSettingsProviderMethods(param.classLoader)
+            }
+
             else -> {
                 hookSettingsMethods(param.classLoader)
                 hookAppOpsMethods(param.classLoader)
@@ -94,19 +100,25 @@ private fun hookLocationMethods(classLoader: ClassLoader) {
 }
 
     private fun hookSettingsMethods(classLoader: ClassLoader) {
-        val clazz = classLoader.loadClass("android.provider.Settings\$Secure")
+        val clazz = classLoader.loadClass($$"android.provider.Settings$Secure")
         hookAllMethods(clazz, "getStringForUser") { chain ->
             val name = chain.args.getOrNull(1) as? String?
             if (name == "mock_location") "0" else chain.proceed()
         }
     }
 
+    // Hook AppOpsManager check methods to hide mock location permission.
+    // Only check-type methods are hooked (not noteOp), so the mock location
+    // app itself can still record its own operations normally.
     private fun hookAppOpsMethods(classLoader: ClassLoader) {
         val appOpsClass = runCatching {
             classLoader.loadClass("android.app.AppOpsManager")
         }.getOrNull() ?: return
 
-        val checkMethods = listOf("checkOp", "checkOpNoThrow", "unsafeCheckOp", "unsafeCheckOpNoThrow")
+        val checkMethods = listOf(
+            "checkOp", "checkOpNoThrow",
+            "unsafeCheckOp", "unsafeCheckOpNoThrow"
+        )
         for (methodName in checkMethods) {
             hookAllMethods(appOpsClass, methodName) { chain ->
                 if (isMockLocationOp(chain.args.firstOrNull())) {
@@ -117,13 +129,18 @@ private fun hookLocationMethods(classLoader: ClassLoader) {
         }
     }
 
+    // Please let me know if I'm wrong
+    // Android 10+ uses com.android.server.appop.AppOpsService#checkOperationImpl.
+    // Android 9 and below uses com.android.server.AppOpsService#checkOperation.
     @SuppressLint("PrivateApi")
     private fun hookAppOpsService(classLoader: ClassLoader) {
         val appOpsClass = listOf(
             "com.android.server.appop.AppOpsService",
             "com.android.server.AppOpsService"
         ).firstNotNullOfOrNull { className ->
-            runCatching { classLoader.loadClass(className) }.getOrNull()
+            runCatching {
+                classLoader.loadClass(className)
+            }.getOrNull()
         } ?: return
 
         val checkMethods = listOf("checkOperation", "checkOperationImpl")
@@ -158,6 +175,8 @@ private fun hookLocationMethods(classLoader: ClassLoader) {
         }
     }
 
+    // Returns a copy of the bundle with "mockLocation" forced to false,
+    // or the original bundle unchanged if the key is absent.
     private fun getPatchedBundle(origBundle: Bundle?): Bundle? {
         if (origBundle?.containsKey("mockLocation") == true) {
             return Bundle(origBundle).apply { putBoolean("mockLocation", false) }
@@ -166,6 +185,8 @@ private fun hookLocationMethods(classLoader: ClassLoader) {
     }
 
     private fun isMockLocationOp(op: Any?): Boolean = when (op) {
+        // "android:mock_location"
+        // AppOpsManager.OP_MOCK_LOCATION
         is String -> op == AppOpsManager.OPSTR_MOCK_LOCATION
         is Int -> op == 58
         else -> false
