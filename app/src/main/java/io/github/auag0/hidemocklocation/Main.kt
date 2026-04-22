@@ -22,50 +22,76 @@ class Main : XposedModule() {
     }
 
     @SuppressLint("SoonBlockedPrivateApi", "BlockedPrivateApi")
-    private fun hookLocationMethods(classLoader: ClassLoader) {
-        val locationClass = classLoader.loadClass("android.location.Location")
+private fun hookLocationMethods(classLoader: ClassLoader) {
+    val locationClass = classLoader.loadClass("android.location.Location")
 
-        // Wajib hook: isMock() → return false, tapi tetap jalankan implementasi asli
-        hookAllMethods(locationClass, "isMock") { chain ->
-            chain.proceed() // jalankan method asli supaya state internal tetap valid
-            false           // override hasil jadi false
+    // Getter: jalankan asli, tapi hasil dipaksa sesuai setter (false)
+    hookAllMethods(locationClass, "isFromMockProvider") { chain ->
+        chain.proceed() // jalankan implementasi asli
+        false           // override hasil agar konsisten dengan setter
+    }
+    hookAllMethods(locationClass, "isMock") { chain ->
+        chain.proceed()
+        false
+    }
+
+    // Setter: paksa argumen jadi false
+    hookAllMethods(locationClass, "setIsFromMockProvider") { chain ->
+        val args = chain.args.toTypedArray()
+        args[0] = false
+        chain.proceed(args)
+    }
+    hookAllMethods(locationClass, "setMock") { chain ->
+        val args = chain.args.toTypedArray()
+        args[0] = false
+        chain.proceed(args)
+    }
+
+    // Extras tetap dipatch agar konsisten
+    hookAllMethods(locationClass, "getExtras") { chain ->
+        val extras = chain.proceed() as Bundle?
+        return@hookAllMethods getPatchedBundle(extras)
+    }
+    hookAllMethods(locationClass, "setExtras") { chain ->
+        val args = chain.args.toTypedArray()
+        args[0] = getPatchedBundle(args[0] as Bundle?)
+        chain.proceed(args)
+    }
+
+    // Normalisasi provider
+    val knownProviders = setOf("gps", "network", "passive", "fused")
+    hookAllMethods(locationClass, "getProvider") { chain ->
+        val provider = chain.proceed() as? String ?: return@hookAllMethods null
+        if (provider !in knownProviders) "gps" else provider
+    }
+
+    // Patch internal field agar dump object konsisten
+    val hasMockProviderMaskField = runCatching {
+        locationClass.getDeclaredField("HAS_MOCK_PROVIDER_MASK").apply { isAccessible = true }
+    }.getOrNull()
+    val mFieldsMaskField = runCatching {
+        locationClass.getDeclaredField("mFieldsMask").apply { isAccessible = true }
+    }.getOrNull()
+    val mExtrasField = runCatching {
+        locationClass.getDeclaredField("mExtras").apply { isAccessible = true }
+    }.getOrNull()
+
+    hookAllMethods(locationClass, "set") { chain ->
+        chain.proceed()
+
+        if (hasMockProviderMaskField != null && mFieldsMaskField != null) {
+            val mask = hasMockProviderMaskField.getInt(null)
+            var fields = mFieldsMaskField.getInt(chain.thisObject)
+            fields = fields and mask.inv()
+            mFieldsMaskField.setInt(chain.thisObject, fields)
         }
 
-        // Sinkronkan setter supaya konsisten
-        hookAllMethods(locationClass, "setMock") { chain ->
-            val args = chain.args.toTypedArray()
-            args[0] = false
-            chain.proceed(args)
-        }
-
-        // Patch internal field agar konsisten
-        val hasMockProviderMaskField = runCatching {
-            locationClass.getDeclaredField("HAS_MOCK_PROVIDER_MASK").apply { isAccessible = true }
-        }.getOrNull()
-        val mFieldsMaskField = runCatching {
-            locationClass.getDeclaredField("mFieldsMask").apply { isAccessible = true }
-        }.getOrNull()
-        val mExtrasField = runCatching {
-            locationClass.getDeclaredField("mExtras").apply { isAccessible = true }
-        }.getOrNull()
-
-        // Hook "set" → setiap kali Location di-copy, bersihkan flag mock
-        hookAllMethods(locationClass, "set") { chain ->
-            chain.proceed()
-
-            if (hasMockProviderMaskField != null && mFieldsMaskField != null) {
-                val mask = hasMockProviderMaskField.getInt(null)
-                var fields = mFieldsMaskField.getInt(chain.thisObject)
-                fields = fields and mask.inv()
-                mFieldsMaskField.setInt(chain.thisObject, fields)
-            }
-
-            if (mExtrasField != null) {
-                val extras = mExtrasField.get(chain.thisObject) as? Bundle?
-                mExtrasField.set(chain.thisObject, getPatchedBundle(extras))
-            }
+        if (mExtrasField != null) {
+            val extras = mExtrasField.get(chain.thisObject) as? Bundle?
+            mExtrasField.set(chain.thisObject, getPatchedBundle(extras))
         }
     }
+}
 
     private fun hookSettingsMethods(classLoader: ClassLoader) {
         val clazz = classLoader.loadClass("android.provider.Settings\$Secure")
