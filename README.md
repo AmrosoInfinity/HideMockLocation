@@ -9,7 +9,6 @@
 ## 🌟 What's Fixed & Improved in This Fork?
 This version introduces advanced context-awareness and critical bug fixes to make the module completely invisible to aggressive detector apps:
 * **Context-Aware Anti-Honeypot:** Fixed the "Hooked" detection (red flags) in *MockLocationDetector*. The module now intelligently inspects the timestamp of `Location` objects. It ignores dummy objects created locally by detector apps and only manipulates genuine system GPS data, bypassing honeypot traps perfectly.
-* **AppOpsManager Restored:** Re-enabled the previously commented-out `AppOpsManager` hooks. The module now successfully hides mock location applications from `OPSTR_MOCK_LOCATION` checks.
 * **Syntax & Stability Patches:** Fixed Kotlin syntax parsing errors (e.g., `Settings\$Secure`) ensuring flawless compilation and stability, especially for builds executed on mobile IDEs.
 
 ### 📸 Proof of Concept (Bypass Honeypot)
