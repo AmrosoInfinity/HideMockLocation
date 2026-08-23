@@ -195,8 +195,6 @@ class Main : XposedModule() {
     private fun isHoneypot(locationObject: Any?): Boolean {
         if (locationObject == null) return false
         return try {
-            // Objek Location buatan aplikasi penguji (Location("mock")) 
-            // secara default akan memiliki nilai time = 0.
             val method = locationObject.javaClass.getMethod("getTime")
             val time = method.invoke(locationObject) as? Long
             time == 0L
